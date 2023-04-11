@@ -64,17 +64,22 @@ public class CpuMetricSender implements AutoCloseable {
 		this.interval = interval;
 	}
 
-	public void startClient() throws Exception {
-		List<Integer> taskmanagers = getTaskManagerPidList();
-		if (taskmanagers.isEmpty()) {
-			throw new RuntimeException("There is no Flink TaskManager is running.");
+	public void startClient(int pid) throws Exception {
+	    this.serverAddress = InetAddress.getByName(serverHostIp);
+	    this.processTrees = new ConcurrentHashMap<>();
+		if (pid == 0) {
+			List<Integer> taskmanagers = getTaskManagerPidList();
+			if (taskmanagers.isEmpty()) {
+				throw new RuntimeException("There is no Flink TaskManager is running.");
+			}
+			for (Integer p : taskmanagers) {
+				processTrees.put(p, new ProcfsBasedProcessTree(String.valueOf(p)));
+			}
+			LOG.info("Start to monitor process: {}", taskmanagers);
+		} else {
+			processTrees.put(new Integer(pid), new ProcfsBasedProcessTree(String.valueOf(pid)));
+			LOG.info("Start to monitor process: {}", pid);
 		}
-		this.serverAddress = InetAddress.getByName(serverHostIp);
-		this.processTrees = new ConcurrentHashMap<>();
-		for (Integer pid : taskmanagers) {
-			processTrees.put(pid, new ProcfsBasedProcessTree(String.valueOf(pid)));
-		}
-		LOG.info("Start to monitor process: {}", taskmanagers);
 		this.service.scheduleAtFixedRate(
 			this::reportCpuMetric,
 			0L,
@@ -189,8 +194,12 @@ public class CpuMetricSender implements AutoCloseable {
 		int reporterPort = conf.get(FlinkNexmarkOptions.METRIC_REPORTER_PORT);
 		Duration reportInterval = conf.get(FlinkNexmarkOptions.METRIC_MONITOR_INTERVAL);
 
+		int pid = 0;
+		if (args.length > 0) {
+		    pid = Integer.decode(args[0]).intValue();
+		}
 		CpuMetricSender sender = new CpuMetricSender(reporterAddress, reporterPort, reportInterval);
-		sender.startClient();
+		sender.startClient(pid);
 		sender.service.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
 	}
 }

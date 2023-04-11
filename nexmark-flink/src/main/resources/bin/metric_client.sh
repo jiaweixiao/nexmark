@@ -34,7 +34,7 @@ case $STARTSTOP in
     (start)
         log=$NEXMARK_LOG_DIR/metric-client.log
         log_setting=(-Dlog.file="$log" -Dlog4j.configuration=file:"$NEXMARK_CONF_DIR"/log4j.properties -Dlog4j.configurationFile=file:"$NEXMARK_CONF_DIR"/log4j.properties)
-        java "${log_setting[@]}" -cp "$NEXMARK_HOME/lib/*:$FLINK_HOME/lib/*" com.github.nexmark.flink.metric.cpu.CpuMetricSender &
+        java "${log_setting[@]}" -cp "$NEXMARK_HOME/lib/*:$FLINK_HOME/lib/*" com.github.nexmark.flink.metric.cpu.CpuMetricSender $(pidof java) &
     ;;
 
     (stop)
