@@ -54,7 +54,7 @@ import static com.github.nexmark.flink.metric.BenchmarkMetric.formatLongValuePer
 public class Benchmark {
 
 	// TODO: remove this once q6 is supported
-	private static final Set<String> UNSUPPORTED_QUERIES = Collections.singleton("q6");
+	private static final Set<String> UNSUPPORTED_QUERIES = Set.of("q6", "q10");
 
 	private static final Option LOCATION = new Option("l", "location", true,
 		"Nexmark directory.");
