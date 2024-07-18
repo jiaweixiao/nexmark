@@ -239,7 +239,7 @@ public class MetricReporter {
 				// it's thread-safe to update metrics
 				metrics.add(metric);
 				// logging
-				String message = eventsNum == 0 ?
+				String message = eventsNum != 0 ?
 						String.format("Current Throughput=%s, Cores=%s (%s TMs)",
 								metric.getPrettyTps(), metric.getPrettyCpu(), tms) :
 						String.format("Current Cores=%s (%s TMs)", metric.getPrettyCpu(), tms);
