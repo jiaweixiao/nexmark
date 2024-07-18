@@ -135,19 +135,19 @@ public class MetricReporter {
 	}
 
 	private boolean jobIsFinished() {
-		if (metrics.size() <= 5) {
-			return false;
-		}
-		int lastPos = metrics.size() - 1;
-		BenchmarkMetric lastMetric = metrics.get(lastPos);
-		if (Double.compare(lastMetric.getTps(), 0.0) == 0) {
-			for (int i = 1;i < 5; i++) {
-				if (Double.compare(metrics.get(lastPos - i).getTps(), 0.0) != 0) {
-					return false;
-				}
-			}
-			return true;
-		}
+//		if (metrics.size() <= 5) {
+//			return false;
+//		}
+//		int lastPos = metrics.size() - 1;
+//		BenchmarkMetric lastMetric = metrics.get(lastPos);
+//		if (Double.compare(lastMetric.getTps(), 0.0) == 0) {
+//			for (int i = 1;i < 5; i++) {
+//				if (Double.compare(metrics.get(lastPos - i).getTps(), 0.0) != 0) {
+//					return false;
+//				}
+//			}
+//			return true;
+//		}
 		return false;
 	}
 
