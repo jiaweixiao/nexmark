@@ -73,7 +73,8 @@ public class TpsMetric {
 		final @Nullable @JsonProperty(FIELD_NAME_MIN) Double min,
 		final @Nullable @JsonProperty(FIELD_NAME_MAX) Double max,
 		final @Nullable @JsonProperty(FIELD_NAME_AVG) Double avg,
-		final @Nullable @JsonProperty(FIELD_NAME_SUM) Double sum) {
+		final @Nullable @JsonProperty(FIELD_NAME_SUM) Double sum,
+		final @Nullable @JsonProperty("skew") Double skew) {
 
 		this.id = requireNonNull(id, "id must not be null");
 		this.min = min;
@@ -82,8 +83,18 @@ public class TpsMetric {
 		this.sum = sum;
 	}
 
+	public TpsMetric(
+			String id,
+			Double min,
+			Double max,
+			Double avg,
+			Double sum) {
+
+		this(id, min, max, avg, sum, null);
+	}
+
 	public TpsMetric(final @JsonProperty(value = FIELD_NAME_ID, required = true) String id) {
-		this(id, null, null, null, null);
+		this(id, null, null, null, null, null);
 	}
 
 	@JsonIgnore

@@ -149,13 +149,17 @@ public class FlinkRestClient {
 	}
 
 	public String getTpsMetricName(String jobId, String vertexId) {
+		return getTpsMetricName(jobId, vertexId, "numRecordsOutPerSecond");
+	}
+
+	public String getTpsMetricName(String jobId, String vertexId, String name) {
 		String url = String.format("http://%s/jobs/%s/vertices/%s/subtasks/metrics", jmEndpoint, jobId, vertexId);
 		String response = executeAsString(url);
 		try {
 			ArrayNode arrayNode = (ArrayNode) NexmarkUtils.MAPPER.readTree(response);
 			for (JsonNode node : arrayNode) {
 				String metricName = node.get("id").asText();
-				if (metricName.startsWith("Source_") && metricName.endsWith(".numRecordsOutPerSecond")) {
+				if (metricName.startsWith("Source_") && metricName.endsWith("." + name)) {
 					return metricName;
 				}
 			}
