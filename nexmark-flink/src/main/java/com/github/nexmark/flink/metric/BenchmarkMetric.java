@@ -27,10 +27,12 @@ import java.util.TreeMap;
 
 public class BenchmarkMetric {
 	private final double tps;
+	private final int records;
 	private final double cpu;
 
-	public BenchmarkMetric(double tps, double cpu) {
+	public BenchmarkMetric(double tps, int records, double cpu) {
 		this.tps = tps;
+		this.records = records;
 		this.cpu = cpu;
 	}
 
@@ -40,6 +42,10 @@ public class BenchmarkMetric {
 
 	public String getPrettyTps() {
 		return formatLongValue((long) tps);
+	}
+
+	public int getRecords() {
+		return records;
 	}
 
 	public double getCpu() {

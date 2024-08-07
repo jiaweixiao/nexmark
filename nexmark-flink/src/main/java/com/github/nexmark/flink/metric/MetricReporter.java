@@ -19,7 +19,7 @@
 package com.github.nexmark.flink.metric;
 
 import org.apache.flink.api.common.time.Deadline;
-import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple3;
 
 import com.github.nexmark.flink.metric.cpu.CpuMetricReceiver;
 import com.github.nexmark.flink.metric.tps.TpsMetric;
@@ -51,26 +51,30 @@ public class MetricReporter {
 	private final List<BenchmarkMetric> metrics;
 	private final ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
 	private volatile Throwable error;
+	private final long eventsNum;
 
-	public MetricReporter(FlinkRestClient flinkRestClient, CpuMetricReceiver cpuMetricReceiver, Duration monitorDelay, Duration monitorInterval, Duration monitorDuration) {
+	public MetricReporter(FlinkRestClient flinkRestClient, CpuMetricReceiver cpuMetricReceiver, Duration monitorDelay, Duration monitorInterval, Duration monitorDuration, long eventsNum) {
 		this.monitorDelay = monitorDelay;
 		this.monitorInterval = monitorInterval;
 		this.monitorDuration = monitorDuration;
 		this.flinkRestClient = flinkRestClient;
 		this.cpuMetricReceiver = cpuMetricReceiver;
 		this.metrics = new ArrayList<>();
+		this.eventsNum = eventsNum;
 	}
 
 	private void submitMonitorThread(String jobId, long eventsNum) {
 
 		String vertexId;
-		String metricName;
+		String throughputName;
+		String recordsOutName;
 
 		while (true) {
-			Tuple2<String, String> jobInfo = getJobInformation(jobId);
+			Tuple3<String, String, String> jobInfo = getJobInformation(jobId);
 			if (jobInfo != null) {
 				vertexId = jobInfo.f0;
-				metricName = jobInfo.f1;
+				throughputName = jobInfo.f1;
+				recordsOutName = jobInfo.f2;
 				break;
 			} else {
 				// wait for the job startup
@@ -83,18 +87,19 @@ public class MetricReporter {
 		}
 
 		this.service.scheduleWithFixedDelay(
-			new MetricCollector(jobId, vertexId, metricName, eventsNum),
+			new MetricCollector(jobId, vertexId, throughputName, recordsOutName, eventsNum),
 			0L,
 			monitorInterval.toMillis(),
 			TimeUnit.MILLISECONDS
 		);
 	}
 
-	private Tuple2<String, String> getJobInformation(String jobId) {
+	private Tuple3<String, String, String> getJobInformation(String jobId) {
 		try {
 			String vertexId = flinkRestClient.getSourceVertexId(jobId);
-			String metricName = flinkRestClient.getTpsMetricName(jobId, vertexId);
-			return Tuple2.of(vertexId, metricName);
+			String throughputName = flinkRestClient.getTpsMetricName(jobId, vertexId, "numRecordsOutPerSecond");
+			String recordCountName = flinkRestClient.getTpsMetricName(jobId, vertexId, "numRecordsOut");
+			return Tuple3.of(vertexId, throughputName, recordCountName);
 		} catch (Exception e) {
 			LOG.warn("Job metric is not ready yet.", e);
 			return null;
@@ -135,20 +140,27 @@ public class MetricReporter {
 	}
 
 	private boolean jobIsFinished() {
-//		if (metrics.size() <= 5) {
-//			return false;
-//		}
-//		int lastPos = metrics.size() - 1;
-//		BenchmarkMetric lastMetric = metrics.get(lastPos);
-//		if (Double.compare(lastMetric.getTps(), 0.0) == 0) {
-//			for (int i = 1;i < 5; i++) {
-//				if (Double.compare(metrics.get(lastPos - i).getTps(), 0.0) != 0) {
-//					return false;
-//				}
-//			}
-//			return true;
-//		}
-		return false;
+		if (eventsNum == 0) {
+			if (metrics.size() <= 10) {
+				return false;
+			}
+			int lastPos = metrics.size() - 1;
+			BenchmarkMetric lastMetric = metrics.get(lastPos);
+			if (Double.compare(lastMetric.getTps(), 0.0) == 0) {
+				for (int i = 1;i < 10; i++) {
+					if (Double.compare(metrics.get(lastPos - i).getTps(), 0.0) != 0) {
+						return false;
+					}
+				}
+				return true;
+			}
+			return false;
+		} else {
+			if (!metrics.isEmpty()) {
+				return metrics.get(metrics.size() - 1).getRecords() >= eventsNum;
+			}
+			return false;
+		}
 	}
 
 	public JobBenchmarkMetric reportMetric(String jobId, long eventsNum) {
@@ -219,29 +231,32 @@ public class MetricReporter {
 	private class MetricCollector implements Runnable {
 		private final String jobId;
 		private final String vertexId;
-		private final String metricName;
+		private final String throughputMetricName;
+		private final String recordsOutMetricName;
 		private final long eventsNum;
 
-		private MetricCollector(String jobId, String vertexId, String metricName, long eventsNum) {
+		private MetricCollector(String jobId, String vertexId, String throughputMetricName, String recordsOutMetricName, long eventsNum) {
 			this.jobId = jobId;
 			this.vertexId = vertexId;
-			this.metricName = metricName;
+			this.throughputMetricName = throughputMetricName;
+			this.recordsOutMetricName = recordsOutMetricName;
 			this.eventsNum = eventsNum;
 		}
 
 		@Override
 		public void run() {
 			try {
-				TpsMetric tps = flinkRestClient.getTpsMetric(jobId, vertexId, metricName);
+				TpsMetric tps = flinkRestClient.getTpsMetric(jobId, vertexId, throughputMetricName);
+				TpsMetric records = flinkRestClient.getTpsMetric(jobId, vertexId, recordsOutMetricName);
 				double cpu = cpuMetricReceiver.getTotalCpu();
 				int tms = cpuMetricReceiver.getNumberOfTM();
-				BenchmarkMetric metric = new BenchmarkMetric(tps.getSum(), cpu);
+				BenchmarkMetric metric = new BenchmarkMetric(tps.getSum(), records.getSum().intValue(), cpu);
 				// it's thread-safe to update metrics
 				metrics.add(metric);
 				// logging
 				String message = eventsNum != 0 ?
-						String.format("Current Throughput=%s, Cores=%s (%s TMs)",
-								metric.getPrettyTps(), metric.getPrettyCpu(), tms) :
+						String.format("Current Throughput=%s, Cores=%s (%s TMs), Processed=%d",
+								metric.getPrettyTps(), metric.getPrettyCpu(), tms, metric.getRecords()) :
 						String.format("Current Cores=%s (%s TMs)", metric.getPrettyCpu(), tms);
 				System.out.println(message);
 				LOG.info(message);

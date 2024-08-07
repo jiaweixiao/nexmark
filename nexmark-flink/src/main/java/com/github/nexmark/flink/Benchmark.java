@@ -189,7 +189,8 @@ public class Benchmark {
 							cpuMetricReceiver,
 							monitorDelay,
 							monitorInterval,
-							monitorDuration);
+							monitorDuration,
+							workload.getEventsNum());
 			QueryRunner runner =
 					new QueryRunner(
 							queryName,
