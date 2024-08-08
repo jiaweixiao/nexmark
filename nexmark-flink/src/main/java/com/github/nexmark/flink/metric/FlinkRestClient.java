@@ -116,7 +116,11 @@ public class FlinkRestClient {
 
 	public boolean isJobRunning() {
 		updateAllJobStatus();
-		return !isNullOrEmpty(lastJobId) && jobIds.get(lastJobId).equalsIgnoreCase("RUNNING");
+		String j = jobIds.get(lastJobId);
+		// Matei comment: This sometimes is "finished" before it even starts. I suspect that what happens is that
+		// the status hasn't been updated back to running yet.
+		//System.out.println(j);
+		return !isNullOrEmpty(lastJobId) && j.equalsIgnoreCase("RUNNING");
 	}
 
 	public boolean isJobCancellingOrFinished() {

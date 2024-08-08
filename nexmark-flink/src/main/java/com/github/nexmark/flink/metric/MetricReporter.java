@@ -120,6 +120,8 @@ public class MetricReporter {
 		}
 	}
 
+	// Matei comment: This method doesn't work properly. Sometimes it says it's not running at the very start.
+	// More details in the FlinkRestClient method.
 	private boolean isJobRunning() {
 		return flinkRestClient.isJobRunning();
 	}
