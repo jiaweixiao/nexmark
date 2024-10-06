@@ -200,8 +200,13 @@ public class Benchmark {
 							reporter,
 							flinkRestClient,
 							category);
-			JobBenchmarkMetric metric = runner.run();
-			totalMetrics.put(queryName, metric);
+			try {
+				JobBenchmarkMetric metric = runner.run();
+				totalMetrics.put(queryName, metric);
+			} catch (Exception e) {
+				System.out.printf("Failed to finish query " + queryName);
+				continue;
+			}
 		}
 	}
 

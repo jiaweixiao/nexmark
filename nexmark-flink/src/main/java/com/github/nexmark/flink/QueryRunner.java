@@ -90,6 +90,8 @@ public class QueryRunner {
 			return metrics;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
 		}
 	}
 
